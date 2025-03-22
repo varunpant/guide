@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #drop-area {
+            border: 2px dashed #ccc;
+            width: 600px;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 50px auto;
+            position: relative;
+        }
+
+        #controls {
+            border: 1px solid #ccc;
+            width: 600px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 50px auto;
+            position: relative;
+        }
+
+        #drop-area.highlight {
+            border-color: purple;
+        }
+
+        img#display-image {
+            max-width: 100%;
+            max-height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .visible {
+            display: block !important;
+        }
+        .canvas {
+            z-index: 1;
+            position: absolute;
+            pointer-events: none;
+        }
+        .output_canvas {
+            transform: rotateY(180deg);
+            -webkit-transform: rotateY(180deg);
+            -moz-transform: rotateY(180deg);
+        }
+        button {
+            border: 1px solid #ccc;
+            margin: 0 5px;
+            background-color: lightBlue;
+            height:50px;
+            width:50px;
+            cursor:pointer;
+            }
+    </style>
+    <title>Drag and Drop Image</title>
+</head>
+
+<body>
+    <div id="drop-area">
+        <div id="loading" class="hidden visible">LOADING...</div>
+        <p>Drag and drop an image here</p>
+        <img id="display-image" src="" alt="Your Image Here" style="display: none;">
+    </div>
+    <div id="controls">
+        <button id="clear">clear</button>
+        <button id="mask">Mask</button>
+       
+    </div>
+
+    <script>
+        const dropArea = document.getElementById('drop-area');
+        const displayImage = document.getElementById('display-image');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop area when item is dragged over it
+        dropArea.addEventListener('dragenter', () => dropArea.classList.add('highlight'));
+        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('highlight'));
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            handleFiles(files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                displayImage.src = URL.createObjectURL(file);
+                displayImage.style.display = 'block';
+            }
+        }
+    </script>
+
+    <script type="module">
+        import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+        const { FaceLandmarker, FilesetResolver, DrawingUtils } = vision;
+        let runningMode = "IMAGE";
+        let faceLandmarker;
+        const loading = document.getElementById("loading");
+        async function createFaceLandmarker() {
+            const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    delegate: "GPU"
+                },
+                outputFaceBlendshapes: true,
+                runningMode,
+                numFaces: 1
+            });
+            loading.classList.remove("visible");
+        }
+        createFaceLandmarker();
+
+        async function handleClick(event) {
+            if (!faceLandmarker) {
+                console.log("Wait for faceLandmarker to load before clicking!");
+                return;
+            }
+            const target = document.getElementById("display-image");
+            // Remove all landmarks drawed before
+            const allCanvas = target.parentNode.getElementsByClassName("canvas");
+            for (var i = allCanvas.length - 1; i >= 0; i--) {
+                const n = allCanvas[i];
+                n.parentNode.removeChild(n);
+            }
+            
+            const faceLandmarkerResult = faceLandmarker.detect(target);
+            const canvas = document.createElement("canvas");
+            canvas.setAttribute("class", "canvas");
+            canvas.setAttribute("width", target.naturalWidth + "px");
+            canvas.setAttribute("height", target.naturalHeight + "px");
+            canvas.style.left = "0px";
+            canvas.style.top = "0px";
+            canvas.style.width = `${target.width}px`;
+            canvas.style.height = `${target.height}px`;
+            target.parentNode.appendChild(canvas);
+            const ctx = canvas.getContext("2d");
+            const drawingUtils = new DrawingUtils(ctx);
+            for (const landmarks of faceLandmarkerResult.faceLandmarks) {
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#C0C0C070", lineWidth: 1 });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: "#FF3030" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, { color: "#30FF30" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, {
+                    color: "#E0E0E0"
+                });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, { color: "#FF3030" });
+                drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, { color: "#30FF30" });
+            }
+            // drawBlendShapes(imageBlendShapes, faceLandmarkerResult.faceBlendshapes);
+        }
+
+        async function handleClear(event) {
+
+            const allCanvas = document.getElementsByClassName("canvas");
+            for (var i = allCanvas.length - 1; i >= 0; i--) {
+                const n = allCanvas[i];
+                n.parentNode.removeChild(n);
+            }
+        }
+
+        ["click"].forEach(eventName => {
+            mask.addEventListener(eventName, handleClick, false);
+            clear.addEventListener(eventName, handleClear, false);
+        });
+
+    </script>
+
+</body>
+
+</html>
