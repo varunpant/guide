@@ -21,9 +21,11 @@
         .segment-config{display:flex;align-items:center;gap:15px;margin-bottom:15px}
         .segment-config label{font-size:14px;color:#555}
         select{padding:4px 8px;border:1px solid #ccc;border-radius:4px}
-        .toggle-wrap{display:flex;gap:15px;margin-bottom:15px}
+        .toggle-wrap{display:flex;gap:15px;margin-bottom:15px;align-items:center}
         .toggle-btn{padding:4px 12px;border:1px solid #007bff;border-radius:4px;background:#fff;color:#007bff;cursor:pointer;font-size:14px}
         .toggle-btn.active{background:#007bff;color:#fff}
+        #downloadBtn{background:#27ae60;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:14px}
+        #downloadBtn:hover{background:#229954}
         .sliders-container{display:flex;flex-direction:column;gap:8px}
         .slider-group{display:flex;align-items:center;gap:10px}
         .slider-group label{min-width:70px;font-size:13px}
@@ -39,18 +41,15 @@
         <button id="clearBtn" class="hidden">Clear</button>
     </header>
 
-    <!-- drop zone -->
     <div id="dropZone">
         <p>Drag & Drop an image here or click to select</p>
         <input type="file" id="fileInput" accept="image/*" style="display:none">
     </div>
 
-    <!-- image display -->
     <div id="imageArea" class="hidden">
         <canvas id="mainCanvas"></canvas>
     </div>
 
-    <!-- bottom controls + histogram -->
     <div id="bottomBar" class="hidden">
         <div id="controls">
             <h2>Controls</h2>
@@ -65,6 +64,7 @@
             <div class="toggle-wrap">
                 <button id="modeToggle" class="toggle-btn active">Manual</button>
                 <button id="viewToggle" class="toggle-btn active">Segmented</button>
+                <button id="downloadBtn">Download</button>
             </div>
             <div class="sliders-container" id="slidersContainer"></div>
         </div>
@@ -86,16 +86,17 @@
               slidersContainer=document.getElementById('slidersContainer'),
               modeToggle=document.getElementById('modeToggle'),
               viewToggle=document.getElementById('viewToggle'),
+              downloadBtn=document.getElementById('downloadBtn'),
               histCtx=document.getElementById('histogramCanvas').getContext('2d');
         const ctx=mainCanvas.getContext('2d');
 
-        // ---- global events ----
+        // Events
         ['dragover','dragleave','drop'].forEach(evt=>{
             dropZone.addEventListener(evt,e=>{
-                e.preventDefault();
+                if(evt==='dragover'||evt==='drop') e.preventDefault();
                 dropZone.classList.toggle('drag-over',evt==='dragover');
-                if(evt==='drop' && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-            })
+                if(evt==='drop'&&e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+            });
         });
         dropZone.addEventListener('click',()=>fileInput.click());
         fileInput.addEventListener('change',e=>handleFile(e.target.files[0]));
@@ -103,32 +104,24 @@
         modeToggle.addEventListener('click',toggleMode);
         viewToggle.addEventListener('click',toggleView);
         clearBtn.addEventListener('click',resetPage);
+        downloadBtn.addEventListener('click',downloadImage);
 
-        function resetPage(){
-            location.reload();
-        }
-
+        function resetPage(){location.reload();}
         function handleFile(file){
             if(!file.type.startsWith('image/')) return;
             const reader=new FileReader();
             reader.onload=e=>{
                 const img=new Image();
-                img.onload=()=>{ originalImage=img; loadImage(); };
+                img.onload=()=>{originalImage=img;loadImage();};
                 img.src=e.target.result;
             };
             reader.readAsDataURL(file);
         }
-
         function loadImage(){
-            mainCanvas.width=originalImage.width;
-            mainCanvas.height=originalImage.height;
             const maxW=Math.min(window.innerWidth-60, originalImage.width);
             const scale=maxW/originalImage.width;
-            mainCanvas.style.maxWidth='100%';
-            mainCanvas.style.maxHeight='calc(100vh - 340px)';
-            mainCanvas.width*=scale;
-            mainCanvas.height*=scale;
-
+            mainCanvas.width=originalImage.width*scale;
+            mainCanvas.height=originalImage.height*scale;
             ctx.drawImage(originalImage,0,0,mainCanvas.width,mainCanvas.height);
             const imgData=ctx.getImageData(0,0,mainCanvas.width,mainCanvas.height);
             originalPixels=new Uint8ClampedArray(imgData.data);
@@ -143,33 +136,25 @@
             clearBtn.classList.remove('hidden');
             updateSegments();
         }
-
         function updateSegments(){
             const k=+segmentCountSelect.value;
             if(manualMode){
                 segmentValues=[...Array(k)].map((_,i)=>Math.round((i+1)*(255/(k+1))));
                 buildSliders();
-            }else{
-                runKMeans(k);
-            }
-            updateCanvas();
-            drawHistogram();
+            }else{runKMeans(k);}
+            updateCanvas();drawHistogram();
         }
-
         function toggleMode(){
             manualMode=!manualMode;
             modeToggle.textContent=manualMode?'Manual':'K-Means';
             slidersContainer.style.display=manualMode?'flex':'none';
             updateSegments();
         }
-
         function toggleView(){
             segmentedView=!segmentedView;
             viewToggle.textContent=segmentedView?'Segmented':'Original';
             updateCanvas();
         }
-
-        // ---- K-Means ----
         function runKMeans(k){
             const data=luminanceData;
             let centroids=[...Array(k)].map((_,i)=>{
@@ -178,17 +163,17 @@
             });
             let assignment=new Uint16Array(data.length);
             let changed=true,iter=0,maxIter=30;
-            while(changed && iter++<maxIter){
+            while(changed&&iter++<maxIter){
                 changed=false;
                 for(let i=0;i<data.length;i++){
                     let min=Infinity,idx=0;
                     for(let c=0;c<k;c++){
                         const d=Math.abs(data[i]-centroids[c]);
-                        if(d<min){ min=d; idx=c; }
+                        if(d<min){min=d;idx=c;}
                     }
-                    if(assignment[i]!==idx){ changed=true; assignment[i]=idx; }
+                    if(assignment[i]!==idx){changed=true;assignment[i]=idx;}
                 }
-                const sums=new Array(k).fill(0), counts=new Array(k).fill(0);
+                const sums=Array(k).fill(0),counts=Array(k).fill(0);
                 for(let i=0;i<data.length;i++){
                     sums[assignment[i]]+=data[i];
                     counts[assignment[i]]++;
@@ -197,12 +182,10 @@
             }
             segmentValues=centroids.sort((a,b)=>a-b);
         }
-
-        // ---- manual sliders ----
         function buildSliders(){
             slidersContainer.innerHTML='';
             segmentValues.forEach((v,i)=>{
-                const g=document.createElement('div'); g.className='slider-group';
+                const g=document.createElement('div');g.className='slider-group';
                 g.innerHTML=`
                     <label>Seg ${i+1}</label>
                     <input type="range" min="0" max="255" value="${v}">
@@ -210,16 +193,13 @@
                 g.querySelector('input').addEventListener('input',e=>{
                     segmentValues[i]=+e.target.value;
                     g.querySelector('span').textContent=e.target.value;
-                    updateCanvas();
-                    drawHistogram();
+                    updateCanvas();drawHistogram();
                 });
                 slidersContainer.appendChild(g);
             });
         }
-
-        // ---- render canvas ----
         function updateCanvas(){
-            if(!originalPixels) return;
+            if(!originalPixels)return;
             if(!segmentedView){
                 const imgData=ctx.createImageData(mainCanvas.width,mainCanvas.height);
                 imgData.data.set(originalPixels);
@@ -231,29 +211,33 @@
             for(let i=0;i<originalPixels.length;i+=4){
                 const lum=luminanceData[i/4];
                 let closest=sorted[0],min=Math.abs(lum-closest);
-                for(const s of sorted){ const d=Math.abs(lum-s); if(d<min){ min=d; closest=s; } }
+                for(const s of sorted){const d=Math.abs(lum-s);if(d<min){min=d;closest=s;}}
                 imgData.data.set([closest,closest,closest,originalPixels[i+3]],i);
             }
             ctx.putImageData(imgData,0,0);
         }
-
-        // ---- histogram ----
         function drawHistogram(){
-            if(!luminanceData) return;
+            if(!luminanceData)return;
             const w=histCtx.canvas.width=histCtx.canvas.parentElement.clientWidth-40;
             const h=histCtx.canvas.height=200;
             histCtx.clearRect(0,0,w,h);
             const hist=Array(256).fill(0);
             luminanceData.forEach(l=>hist[Math.round(l)]++);
-            const max=Math.max(...hist), barW=w/256;
+            const max=Math.max(...hist),barW=w/256;
             histCtx.fillStyle='#e0e0e0';
             hist.forEach((v,i)=>histCtx.fillRect(i*barW,h-10-(v/max*(h-20)),barW-1,(v/max*(h-20))));
-            histCtx.strokeStyle='#007bff'; histCtx.lineWidth=2;
+            histCtx.strokeStyle='#007bff';histCtx.lineWidth=2;
             histCtx.beginPath();
-            segmentValues.forEach(v=>{ const x=v/255*w; histCtx.moveTo(x,0); histCtx.lineTo(x,h); });
+            segmentValues.forEach(v=>{const x=v/255*w;histCtx.moveTo(x,0);histCtx.lineTo(x,h);});
             histCtx.stroke();
-            histCtx.fillStyle='#007bff'; histCtx.font='12px Arial';
+            histCtx.fillStyle='#007bff';histCtx.font='12px Arial';
             segmentValues.forEach(v=>histCtx.fillText(v.toString(),v/255*w-10,15));
+        }
+        function downloadImage(){
+            const link=document.createElement('a');
+            link.download='segmented_image.png';
+            link.href=mainCanvas.toDataURL('image/png');
+            link.click();
         }
     </script>
 </body>
