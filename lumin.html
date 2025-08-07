@@ -12,8 +12,12 @@
         #clearBtn:hover{background:#c0392b}
         #dropZone{flex:1;display:flex;align-items:center;justify-content:center;border:3px dashed #ccc;border-radius:10px;margin:30px;background:#fff}
         #dropZone.hidden{display:none}
-        #imageArea{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5;padding:20px}
-        #mainCanvas{max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+        #imageArea{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5;padding:20px;gap:20px}
+        #mainCanvas{max-width:calc(100% - 120px);max-height:100%;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+        #swatchPanel{display:flex;flex-direction:column;gap:8px;align-items:center}
+        .swatch{width:60px;height:60px;border:2px solid #ccc;cursor:pointer;border-radius:4px;transition:.2s}
+        .swatch:hover{border-color:#007bff;transform:scale(1.05)}
+        .swatch.active{border-color:#e74c3c}
         #bottomBar{background:#fff;box-shadow:0 -2px 8px rgba(0,0,0,.1);display:flex;min-height:280px}
         #controls,#histogram{flex:1;padding:20px;overflow-y:auto}
         #controls{border-right:1px solid #e0e0e0}
@@ -48,6 +52,7 @@
 
     <div id="imageArea" class="hidden">
         <canvas id="mainCanvas"></canvas>
+        <div id="swatchPanel"></div>
     </div>
 
     <div id="bottomBar" class="hidden">
@@ -77,6 +82,7 @@
     <script>
         let originalImage=null, originalPixels=null, segmentValues=[], luminanceData=null;
         let manualMode=true, segmentedView=true;
+        let activeHighlight=null;
 
         const dropZone=document.getElementById('dropZone'),
               fileInput=document.getElementById('fileInput'),
@@ -87,6 +93,7 @@
               modeToggle=document.getElementById('modeToggle'),
               viewToggle=document.getElementById('viewToggle'),
               downloadBtn=document.getElementById('downloadBtn'),
+              swatchPanel=document.getElementById('swatchPanel'),
               histCtx=document.getElementById('histogramCanvas').getContext('2d');
         const ctx=mainCanvas.getContext('2d');
 
@@ -107,6 +114,7 @@
         downloadBtn.addEventListener('click',downloadImage);
 
         function resetPage(){location.reload();}
+
         function handleFile(file){
             if(!file.type.startsWith('image/')) return;
             const reader=new FileReader();
@@ -117,8 +125,9 @@
             };
             reader.readAsDataURL(file);
         }
+
         function loadImage(){
-            const maxW=Math.min(window.innerWidth-60, originalImage.width);
+            const maxW=Math.min(window.innerWidth-180, originalImage.width);
             const scale=maxW/originalImage.width;
             mainCanvas.width=originalImage.width*scale;
             mainCanvas.height=originalImage.height*scale;
@@ -136,25 +145,31 @@
             clearBtn.classList.remove('hidden');
             updateSegments();
         }
+
         function updateSegments(){
             const k=+segmentCountSelect.value;
             if(manualMode){
                 segmentValues=[...Array(k)].map((_,i)=>Math.round((i+1)*(255/(k+1))));
                 buildSliders();
             }else{runKMeans(k);}
-            updateCanvas();drawHistogram();
+            buildSwatches();
+            updateCanvas();
+            drawHistogram();
         }
+
         function toggleMode(){
             manualMode=!manualMode;
             modeToggle.textContent=manualMode?'Manual':'K-Means';
-            slidersContainer.style.display=manualMode?'flex':'none';
             updateSegments();
         }
+
         function toggleView(){
             segmentedView=!segmentedView;
             viewToggle.textContent=segmentedView?'Segmented':'Original';
+            activeHighlight=null;
             updateCanvas();
         }
+
         function runKMeans(k){
             const data=luminanceData;
             let centroids=[...Array(k)].map((_,i)=>{
@@ -182,6 +197,7 @@
             }
             segmentValues=centroids.sort((a,b)=>a-b);
         }
+
         function buildSliders(){
             slidersContainer.innerHTML='';
             segmentValues.forEach((v,i)=>{
@@ -193,11 +209,58 @@
                 g.querySelector('input').addEventListener('input',e=>{
                     segmentValues[i]=+e.target.value;
                     g.querySelector('span').textContent=e.target.value;
-                    updateCanvas();drawHistogram();
+                    buildSwatches();
+                    updateCanvas();
+                    drawHistogram();
                 });
                 slidersContainer.appendChild(g);
             });
         }
+
+        function buildSwatches(){
+            swatchPanel.innerHTML='';
+            segmentValues.sort((a,b)=>a-b).forEach(val=>{
+                const swatch=document.createElement('div');
+                swatch.className='swatch';
+                swatch.style.background=`rgb(${val},${val},${val})`;
+                swatch.dataset.value=val;
+                swatch.addEventListener('click',()=>highlightSegment(val,swatch));
+                swatchPanel.appendChild(swatch);
+            });
+        }
+
+        function highlightSegment(value,swatch){
+            if(activeHighlight===value){
+                activeHighlight=null;
+                document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+                updateCanvas();
+                return;
+            }
+            activeHighlight=value;
+            document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+            swatch.classList.add('active');
+            
+            const imgData=ctx.getImageData(0,0,mainCanvas.width,mainCanvas.height);
+            for(let i=0;i<originalPixels.length;i+=4){
+                const lum=luminanceData[i/4];
+                if(Math.abs(lum-value)<1){
+                    imgData.data[i]=255;
+                    imgData.data[i+1]=0;
+                    imgData.data[i+2]=0;
+                }else if(segmentedView){
+                    const sorted=[...segmentValues].sort((a,b)=>a-b);
+                    let closest=sorted[0],min=Math.abs(lum-closest);
+                    for(const s of sorted){const d=Math.abs(lum-s);if(d<min){min=d;closest=s;}}
+                    imgData.data[i]=closest;
+                    imgData.data[i+1]=closest;
+                    imgData.data[i+2]=closest;
+                }else{
+                    imgData.data.set(originalPixels.slice(i,i+3),i);
+                }
+            }
+            ctx.putImageData(imgData,0,0);
+        }
+
         function updateCanvas(){
             if(!originalPixels)return;
             if(!segmentedView){
@@ -215,7 +278,9 @@
                 imgData.data.set([closest,closest,closest,originalPixels[i+3]],i);
             }
             ctx.putImageData(imgData,0,0);
+            if(activeHighlight) highlightSegment(activeHighlight,document.querySelector('.swatch.active'));
         }
+
         function drawHistogram(){
             if(!luminanceData)return;
             const w=histCtx.canvas.width=histCtx.canvas.parentElement.clientWidth-40;
@@ -233,6 +298,7 @@
             histCtx.fillStyle='#007bff';histCtx.font='12px Arial';
             segmentValues.forEach(v=>histCtx.fillText(v.toString(),v/255*w-10,15));
         }
+
         function downloadImage(){
             const link=document.createElement('a');
             link.download='segmented_image.png';
