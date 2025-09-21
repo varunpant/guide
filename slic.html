@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLIC Example</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            gap: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            max-width:calc(100% - 120px);max-height:100%;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.15)
+        }
+
+      
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Original Image</h2>
+        <canvas id="original-canvas"></canvas>
+    </div>
+    <div>
+        <h2>SLIC Edges</h2>
+        <canvas id="slic-canvas"></canvas>
+    </div>
+    <script type="module">
+        import { SLIC } from './slic.js';
+
+const originalCanvas = document.getElementById('original-canvas');
+const slicCanvas = document.getElementById('slic-canvas');
+const originalCtx = originalCanvas.getContext('2d');
+const slicCtx = slicCanvas.getContext('2d');
+
+const img = new Image();
+img.src = 'dog.png';
+img.onload = () => {
+    originalCanvas.width = img.width;
+    originalCanvas.height = img.height;
+    slicCanvas.width = img.width;
+    slicCanvas.height = img.height;
+
+    originalCtx.drawImage(img, 0, 0);
+
+    const imageData = originalCtx.getImageData(0, 0, img.width, img.height);
+    
+    const slic = new SLIC(imageData, 10, 400);
+    slic.run(10);
+    
+    // const resultImageData = slic.drawEdges(new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height));
+    // slicCtx.putImageData(resultImageData, 0, 0);
+
+    const resultImageData = slic.colorWithAverageColors(new ImageData(new Uint8ClampedArray(imageData.data.length), imageData.width, imageData.height));
+    slicCtx.putImageData(resultImageData, 0, 0);
+
+
+};
+
+ 
+    </script>
+</body>
+</html>
