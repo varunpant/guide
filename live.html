@@ -48,6 +48,7 @@
     <div id="controls">
         <button id="toggle-grid">Toggle Grid</button>
         <button id="screenshot">Screenshot</button>
+        <button id="toggle-numbers">Toggle Numbers</button>
     </div>
 
     <script type="module">
@@ -60,6 +61,7 @@
         let webcamRunning = false;
         let isGridVisible = true;
         let takeScreenshot = false;
+        let areNumbersVisible = false;
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
@@ -111,8 +113,8 @@
 
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.translate(canvasElement.width, 0);
             canvasCtx.scale(-1, 1);
-            canvasCtx.translate(-canvasElement.width, 0);
             canvasCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
             if (runningMode === "VIDEO") {
@@ -126,13 +128,31 @@
                                 drawingUtils.drawConnectors(
                                     landmarks,
                                     FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-                                    { color: "#30FF30" ,lineWidth:0.8}
+                                    { color: "#30FF30",lineWidth:0.5 }
                                 );
+
+                                if (areNumbersVisible) {
+                                    canvasCtx.fillStyle = "red";
+                                    canvasCtx.font = "10px Arial";
+                                    let i = 0;
+                                    for (const landmark of landmarks) {
+                                        const x = landmark.x * canvasElement.width;
+                                        const y = landmark.y * canvasElement.height;
+
+                                        canvasCtx.save();
+                                        canvasCtx.translate(x, y);
+                                        canvasCtx.scale(-1, 1);
+                                        canvasCtx.fillText(i, 0, 0);
+                                        canvasCtx.restore();
+                                        i++;
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+
             if (takeScreenshot) {
                 const dataURL = canvasElement.toDataURL("image/png");
                 const link = document.createElement("a");
@@ -159,6 +179,11 @@
         const screenshotButton = document.getElementById("screenshot");
         screenshotButton.addEventListener("click", () => {
             takeScreenshot = true;
+        });
+
+        const toggleNumbersButton = document.getElementById("toggle-numbers");
+        toggleNumbersButton.addEventListener("click", () => {
+            areNumbersVisible = !areNumbersVisible;
         });
 
     </script>
