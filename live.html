@@ -71,6 +71,7 @@
         <button id="grid">Grid</button>
         <button id="eyes">Eyes</button>
         <button id="lines">Lines</button>
+        <button id="box">Box</button>
         <button id="toggle-numbers">Numbers</button>
     </div>
 
@@ -93,7 +94,7 @@
 
         let faceLandmarker;
         let areNumbersVisible = false;
-        let visualizationMode = 'grid'; // default mode: grid, eyes, lines, or null
+        let visualizationMode = 'grid'; // default mode: grid, eyes, lines, box, or null
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
@@ -102,10 +103,11 @@
         const gridButton = document.getElementById("grid");
         const eyesButton = document.getElementById("eyes");
         const linesButton = document.getElementById("lines");
+        const boxButton = document.getElementById("box");
         const toggleNumbersButton = document.getElementById("toggle-numbers");
 
         function setActiveButton(activeBtn) {
-            [gridButton, eyesButton, linesButton].forEach(btn => btn.classList.remove('active'));
+            [gridButton, eyesButton, linesButton, boxButton].forEach(btn => btn.classList.remove('active'));
             if (activeBtn) activeBtn.classList.add('active');
         }
 
@@ -122,6 +124,11 @@
         linesButton.addEventListener("click", () => {
             visualizationMode = visualizationMode === 'lines' ? null : 'lines';
             setActiveButton(visualizationMode === 'lines' ? linesButton : null);
+        });
+
+        boxButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'box' ? null : 'box';
+            setActiveButton(visualizationMode === 'box' ? boxButton : null);
         });
 
         toggleNumbersButton.addEventListener("click", () => {
@@ -234,6 +241,21 @@
                             drawingUtils.drawConnectors(landmarks, toFP(NOSE_BASE), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, toFP(LIP_BASE), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#30FF30" });
+                            break;
+                        case 'box':
+                            // Draw bounding box around face
+                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                            for (const landmark of landmarks) {
+                                const x = landmark.x * canvasElement.width;
+                                const y = landmark.y * canvasElement.height;
+                                minX = Math.min(minX, x);
+                                minY = Math.min(minY, y);
+                                maxX = Math.max(maxX, x);
+                                maxY = Math.max(maxY, y);
+                            }
+                            canvasCtx.strokeStyle = "#30FF30";
+                            canvasCtx.lineWidth = 2;
+                            canvasCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
                             break;
                     }
 
