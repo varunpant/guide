@@ -84,6 +84,13 @@
         const NOSE_BASE = [203,98,97,2,328,327,423];
         const LIP_BASE = [57,61,76,62,78,95,88,178,87,14,317,402,318,324,308, 292,291,287];
 
+        const HORIZONTAL_PARTITION = [10,1,152];
+        const VERTICAL_PARTITION = [137,1,366];
+
+        const HORIZONTAL_BROW_TOP = [21,9,251];
+        const HORIZONTAL_EYE_TOP = [470,475];
+        const HORIZONTAL_EYE_BOTTOM = [145,374];
+
         function toFP(arr){
             var fp = [];
             for(var i=0;i<arr.length-1;i++){
@@ -256,6 +263,12 @@
                             canvasCtx.strokeStyle = "#30FF30";
                             canvasCtx.lineWidth = 2;
                             canvasCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 2 });
                             break;
                     }
 
