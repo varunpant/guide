@@ -91,6 +91,9 @@
         const HORIZONTAL_EYE_TOP = [470,475];
         const HORIZONTAL_EYE_BOTTOM = [145,374];
 
+        const HORIZONTAL_LIP_TOP = [186,0,410];
+        const HORIZONTAL_LIP_BOTTOM = [210,17,430];
+
         function toFP(arr){
             var fp = [];
             for(var i=0;i<arr.length-1;i++){
@@ -264,11 +267,13 @@
                             canvasCtx.lineWidth = 2;
                             canvasCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
                             break;
                     }
 
