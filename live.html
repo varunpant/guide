@@ -13,69 +13,134 @@
             align-items: center;
             height: 100vh;
             background-color: #000;
-        }
-        .videoView {
             position: relative;
         }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         video {
-            display: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
         .canvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
         }
         #controls {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 10px 15px;
+            background-color: #333;
+            color: white;
+            border: none;
             cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        button.active {
+            background-color: #30FF30;
+            color: black;
         }
     </style>
 </head>
 <body>
-    <div class="videoView">
+    <div id="container">
         <video id="webcam" autoplay playsinline></video>
         <canvas class="canvas" id="output_canvas"></canvas>
     </div>
+
     <div id="controls">
-        <button id="toggle-grid">Toggle Grid</button>
-        <button id="screenshot">Screenshot</button>
-        <button id="toggle-numbers">Toggle Numbers</button>
+        <button id="grid">Grid</button>
+        <button id="eyes">Eyes</button>
+        <button id="lines">Lines</button>
+        <button id="toggle-numbers">Numbers</button>
     </div>
 
     <script type="module">
-        import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
-        const { FaceLandmarker, FilesetResolver, DrawingUtils } = vision;
+        import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+
+        // Face landmark indices for guide lines
+        const FACE_VERTICAL = [10,151,9,8,168,6,197,195,5,4,1,19,164,0,11,12,13,14,15,16,17,18,200,199,175,152];
+        const EYES_HORIZONTAL = [127,34,143,35,226,130,33,468,469,155,243,244,245,122,6,351,465,464,463,476,473,474,263,359,446,265,372,356];
+        const NOSE_BASE = [203,98,97,2,328,327,423];
+        const LIP_BASE = [57,61,76,62,78,95,88,178,87,14,317,402,318,324,308, 292,291,287];
+
+        function toFP(arr){
+            var fp = [];
+            for(var i=0;i<arr.length-1;i++){
+                fp[i] = {"start":arr[i],"end":arr[i+1]};
+            }
+            return fp;
+        }
 
         let faceLandmarker;
-        let runningMode = "VIDEO";
-        let enableWebcamButton;
-        let webcamRunning = false;
-        let isGridVisible = true;
-        let takeScreenshot = false;
         let areNumbersVisible = false;
+        let visualizationMode = 'grid'; // default mode: grid, eyes, lines, or null
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
-        const canvasCtx = canvasElement.getContext("2d");
+
+        // Button controls
+        const gridButton = document.getElementById("grid");
+        const eyesButton = document.getElementById("eyes");
+        const linesButton = document.getElementById("lines");
+        const toggleNumbersButton = document.getElementById("toggle-numbers");
+
+        function setActiveButton(activeBtn) {
+            [gridButton, eyesButton, linesButton].forEach(btn => btn.classList.remove('active'));
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        gridButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'grid' ? null : 'grid';
+            setActiveButton(visualizationMode === 'grid' ? gridButton : null);
+        });
+
+        eyesButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'eyes' ? null : 'eyes';
+            setActiveButton(visualizationMode === 'eyes' ? eyesButton : null);
+        });
+
+        linesButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'lines' ? null : 'lines';
+            setActiveButton(visualizationMode === 'lines' ? linesButton : null);
+        });
+
+        toggleNumbersButton.addEventListener("click", () => {
+            areNumbersVisible = !areNumbersVisible;
+            toggleNumbersButton.classList.toggle('active');
+        });
+
+        // Set grid as active by default
+        setActiveButton(gridButton);
 
         async function createFaceLandmarker() {
-            const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
             faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
                 baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task`,
                     delegate: "GPU"
                 },
-                outputFaceBlendshapes: true, // Aligning with the example
-                runningMode,
+                outputFaceBlendshapes: false,
+                runningMode: "VIDEO",
                 numFaces: 1
             });
             enableCam();
@@ -88,12 +153,12 @@
                 return;
             }
 
-            webcamRunning = true;
-
+            // getUsermedia parameters.
             const constraints = {
                 video: true
             };
 
+            // Activate the webcam stream.
             navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", predictWebcam);
@@ -101,90 +166,101 @@
         }
 
         let lastVideoTime = -1;
-        async function predictWebcam() {
-            const videoView = document.querySelector('.videoView');
-            videoView.style.width = video.videoWidth + 'px';
-            videoView.style.height = video.videoHeight + 'px';
+        let results = undefined;
+        const canvasCtx = canvasElement.getContext("2d");
+        const drawingUtils = new DrawingUtils(canvasCtx);
 
-            canvasElement.style.width = video.videoWidth + 'px';
-            canvasElement.style.height = video.videoHeight + 'px';
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
+        function predictWebcam() {
+            // Set canvas to match video dimensions
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+
+            canvasElement.width = videoWidth;
+            canvasElement.height = videoHeight;
+
+            // Calculate displayed size maintaining aspect ratio
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+            const videoAspect = videoWidth / videoHeight;
+            const containerAspect = containerWidth / containerHeight;
+
+            let displayWidth, displayHeight;
+            if (containerAspect > videoAspect) {
+                displayHeight = containerHeight;
+                displayWidth = displayHeight * videoAspect;
+            } else {
+                displayWidth = containerWidth;
+                displayHeight = displayWidth / videoAspect;
+            }
+
+            canvasElement.style.width = displayWidth + 'px';
+            canvasElement.style.height = displayHeight + 'px';
+
+
+            let startTimeMs = performance.now();
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                results = faceLandmarker.detectForVideo(video, startTimeMs);
+            }
 
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.translate(canvasElement.width, 0);
-            canvasCtx.scale(-1, 1);
-            canvasCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            if (results.faceLandmarks) {
+                for (const landmarks of results.faceLandmarks) {
+                    // Draw visualization based on selected mode
+                    switch (visualizationMode) {
+                        case 'grid':
+                            drawingUtils.drawConnectors(
+                                landmarks,
+                                FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+                                { color: "#30FF30", lineWidth: 1 }
+                            );
+                            break;
+                        case 'eyes':
+                            drawingUtils.drawConnectors(
+                                landmarks,
+                                FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
+                                { color: "#30FF30", lineWidth: 3 }
+                            );
+                            drawingUtils.drawConnectors(
+                                landmarks,
+                                FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+                                { color: "#30FF30", lineWidth: 3 }
+                            );
+                            break;
+                        case 'lines':
+                            drawingUtils.drawConnectors(landmarks, toFP(FACE_VERTICAL), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(EYES_HORIZONTAL), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(NOSE_BASE), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, toFP(LIP_BASE), { color: "#30FF30", lineWidth: 2 });
+                            drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#30FF30" });
+                            break;
+                    }
 
-            if (runningMode === "VIDEO") {
-                if (lastVideoTime !== video.currentTime) {
-                    lastVideoTime = video.currentTime;
-                    const results = faceLandmarker.detectForVideo(video, Date.now());
-                    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                        if (isGridVisible) {
-                            const drawingUtils = new DrawingUtils(canvasCtx);
-                            for (const landmarks of results.faceLandmarks) {
-                                drawingUtils.drawConnectors(
-                                    landmarks,
-                                    FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-                                    { color: "#30FF30",lineWidth:0.5 }
-                                );
+                    if (areNumbersVisible) {
+                        canvasCtx.fillStyle = "red";
+                        canvasCtx.font = "10px Arial";
+                        let i = 0;
+                        for (const landmark of landmarks) {
+                            const x = landmark.x * canvasElement.width;
+                            const y = landmark.y * canvasElement.height;
 
-                                if (areNumbersVisible) {
-                                    canvasCtx.fillStyle = "red";
-                                    canvasCtx.font = "10px Arial";
-                                    let i = 0;
-                                    for (const landmark of landmarks) {
-                                        const x = landmark.x * canvasElement.width;
-                                        const y = landmark.y * canvasElement.height;
-
-                                        canvasCtx.save();
-                                        canvasCtx.translate(x, y);
-                                        canvasCtx.scale(-1, 1);
-                                        canvasCtx.fillText(i, 0, 0);
-                                        canvasCtx.restore();
-                                        i++;
-                                    }
-                                }
-                            }
+                            canvasCtx.save();
+                            canvasCtx.translate(x, y);
+                            canvasCtx.scale(-1, 1);
+                            canvasCtx.fillText(i, 0, 0);
+                            canvasCtx.restore();
+                            i++;
                         }
                     }
                 }
             }
-
-            if (takeScreenshot) {
-                const dataURL = canvasElement.toDataURL("image/png");
-                const link = document.createElement("a");
-                link.href = dataURL;
-                link.download = "screenshot.png";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                takeScreenshot = false;
-            }
-
             canvasCtx.restore();
 
-            if (webcamRunning === true) {
-                window.requestAnimationFrame(predictWebcam);
-            }
+            // Call this function again to keep predicting when the browser is ready.
+            window.requestAnimationFrame(predictWebcam);
         }
 
-        const toggleGridButton = document.getElementById("toggle-grid");
-        toggleGridButton.addEventListener("click", () => {
-            isGridVisible = !isGridVisible;
-        });
-
-        const screenshotButton = document.getElementById("screenshot");
-        screenshotButton.addEventListener("click", () => {
-            takeScreenshot = true;
-        });
-
-        const toggleNumbersButton = document.getElementById("toggle-numbers");
-        toggleNumbersButton.addEventListener("click", () => {
-            areNumbersVisible = !areNumbersVisible;
-        });
 
     </script>
 </body>

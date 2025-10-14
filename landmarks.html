@@ -80,6 +80,7 @@
     <div id="controls">
         <button id="clear">clear</button>
         <button id="grid">grid</button>
+        <button id="grid2">grid2</button>
         <button id="eyes">eyes</button>
         <button id="nose">nose</button>
         <button id="lips">lips</button>
@@ -137,24 +138,23 @@
         function toFP(arr){
             var fp = [];
             for(var i=0;i<arr.length-1;i++){
-                fp[i] = {"start":arr[i],"end":arr[i+1]}
+                fp[i] = {"start":arr[i],"end":arr[i+1]};
             }
             return fp;
         }
 
-        import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
-        const { FaceLandmarker, FilesetResolver, DrawingUtils } = vision;
+        import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
         let runningMode = "IMAGE";
         let faceLandmarker;
         const loading = document.getElementById("loading");
         async function createFaceLandmarker() {
-            const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
             faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
                 baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task`,
                     delegate: "GPU"
                 },
-                outputFaceBlendshapes: true,
+                outputFaceBlendshapes: false,
                 runningMode,
                 numFaces: 1
             });
@@ -192,7 +192,10 @@
             for (const landmarks of faceLandmarkerResult.faceLandmarks) {
                 switch (mask_type) {
                     case "grid":
-                        drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#30FF30", lineWidth: 0.2 });
+                        break;
+                    case "grid2":
+                        drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#0000FF", lineWidth: 1 });
                         break;
                     case "eyes":
                         drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30", lineWidth: 3 });
@@ -251,6 +254,7 @@
    
         ["click"].forEach(eventName => {
             grid.addEventListener(eventName, drawMask, false);
+            grid2.addEventListener(eventName, drawMask, false);
             eyes.addEventListener(eventName, drawMask, false);
             nose.addEventListener(eventName, drawMask, false);
             lips.addEventListener(eventName, drawMask, false);
