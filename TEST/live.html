@@ -90,12 +90,21 @@
         const HORIZONTAL_PARTITION = [10,1,152];
         const VERTICAL_PARTITION = [137,1,366];
 
+
+
+        const HORIZONTAL_HAIRLINE_TOP = [109,10,338];
+
         const HORIZONTAL_BROW_TOP = [21,9,251];
+
         const HORIZONTAL_EYE_TOP = [470,475];
         const HORIZONTAL_EYE_BOTTOM = [145,374];
 
+        const HORIZONTAL_NOSE_BOTTOM = [203,1,423];
+
         const HORIZONTAL_LIP_TOP = [186,0,410];
         const HORIZONTAL_LIP_BOTTOM = [210,17,430];
+
+        const HORIZONTAL_CHIN_BOTTOM = [148,152,377];
 
         function toFP(arr){
             var fp = [];
@@ -264,15 +273,24 @@
                         canvasCtx.strokeStyle = "red";
                         canvasCtx.stroke();
                     }
+                    if (activeModes.h) {
+                        
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_HAIRLINE_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
+                       
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                        
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_NOSE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
 
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_CHIN_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                    }
                     if (activeModes.line) {
                         drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
                         drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
-                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
-                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
-                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
-                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
-                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                       
                     }
 
                     if (activeModes.box) {
