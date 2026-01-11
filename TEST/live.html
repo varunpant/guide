@@ -70,7 +70,7 @@
     <div id="controls">
         <button id="h-btn">H</button>
         <button id="v-btn">V</button>
-        <button id="box">Box</button>
+        <button id="box-btn">Box</button>
         <button id="line-btn">Line</button>
         <button id="circle-btn">Circle</button>
         <button id="mask-btn">Mask</button>
@@ -106,51 +106,63 @@
         }
 
         let faceLandmarker;
-        let areNumbersVisible = false;
-        let visualizationMode = 'box'; // default mode: mask, box, circle, line or null
+        let activeModes = {
+            h: false,
+            v: false,
+            box: true,
+            line: false,
+            circle: false,
+            mask: false,
+            numbers: false
+        };
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
 
         // Button controls
+        const hButton = document.getElementById("h-btn");
+        const vButton = document.getElementById("v-btn");
+        const boxButton = document.getElementById("box-btn");
+        const lineButton = document.getElementById("line-btn");
         const circleButton = document.getElementById("circle-btn");
         const maskButton = document.getElementById("mask-btn");
-        const boxButton = document.getElementById("box");
-        const lineButton = document.getElementById("line-btn");
         const toggleNumbersButton = document.getElementById("toggle-numbers");
 
-        function setActiveButton(activeBtn) {
-            [circleButton, maskButton, boxButton, lineButton].forEach(btn => btn.classList.remove('active'));
-            if (activeBtn) activeBtn.classList.add('active');
+        const buttons = {
+            h: hButton,
+            v: vButton,
+            box: boxButton,
+            line: lineButton,
+            circle: circleButton,
+            mask: maskButton,
+            numbers: toggleNumbersButton
+        };
+
+        function updateButtonStyles() {
+            for (const mode in activeModes) {
+                if (activeModes[mode]) {
+                    buttons[mode].classList.add('active');
+                } else {
+                    buttons[mode].classList.remove('active');
+                }
+            }
         }
 
-        circleButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'circle' ? null : 'circle';
-            setActiveButton(visualizationMode === 'circle' ? circleButton : null);
-        });
+        function toggleMode(mode) {
+            activeModes[mode] = !activeModes[mode];
+            updateButtonStyles();
+        }
 
-        maskButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'mask' ? null : 'mask';
-            setActiveButton(visualizationMode === 'mask' ? maskButton : null);
-        });
+        hButton.addEventListener("click", () => toggleMode('h'));
+        vButton.addEventListener("click", () => toggleMode('v'));
+        boxButton.addEventListener("click", () => toggleMode('box'));
+        lineButton.addEventListener("click", () => toggleMode('line'));
+        circleButton.addEventListener("click", () => toggleMode('circle'));
+        maskButton.addEventListener("click", () => toggleMode('mask'));
+        toggleNumbersButton.addEventListener("click", () => toggleMode('numbers'));
 
-        boxButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'box' ? null : 'box';
-            setActiveButton(visualizationMode === 'box' ? boxButton : null);
-        });
-
-        lineButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'line' ? null : 'line';
-            setActiveButton(visualizationMode === 'line' ? lineButton : null);
-        });
-
-        toggleNumbersButton.addEventListener("click", () => {
-            areNumbersVisible = !areNumbersVisible;
-            toggleNumbersButton.classList.toggle('active');
-        });
-
-        // Set grid as active by default
-        setActiveButton(boxButton);
+        // Initialize button styles
+        updateButtonStyles();
 
         async function createFaceLandmarker() {
             const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
@@ -227,74 +239,75 @@
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             if (results.faceLandmarks) {
                 for (const landmarks of results.faceLandmarks) {
-                    // Draw visualization based on selected mode
-                    switch (visualizationMode) {
-                        case 'mask':
-                            drawingUtils.drawConnectors(landmarks, toFP(FACE_VERTICAL), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(EYES_HORIZONTAL), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(NOSE_BASE), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, toFP(LIP_BASE), { color: "#30FF30", lineWidth: 2 });
-                            drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#30FF30" });
-                            break;
-                        case 'circle':
-                            // Draw circle with radius = distance(point 9, point 1) centered at box center
-                            const p9c = landmarks[151];
-                            const p1c = landmarks[1];
-                            const dxc = (p9c.x - p1c.x) * canvasElement.width;
-                            const dyc = (p9c.y - p1c.y) * canvasElement.height;
-                            const radiusc = Math.sqrt(dxc * dxc + dyc * dyc);
-
-                            const cxc = p9c.x * canvasElement.width;
-                            const cyc = p9c.y * canvasElement.height;
-
-                            canvasCtx.beginPath();
-                            canvasCtx.arc(cxc, cyc, radiusc, 0, 2 * Math.PI);
-                            canvasCtx.strokeStyle = "red";
-                            canvasCtx.stroke();
-                            break;
-                        case 'line':
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
-                            break;
-                        case 'box':
-                            // Draw bounding box around face
-                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                            for (const landmark of landmarks) {
-                                const x = landmark.x * canvasElement.width;
-                                const y = landmark.y * canvasElement.height;
-                                minX = Math.min(minX, x);
-                                minY = Math.min(minY, y);
-                                maxX = Math.max(maxX, x);
-                                maxY = Math.max(maxY, y);
-                            }
-                            canvasCtx.strokeStyle = "#ff0000";
-                            canvasCtx.lineWidth = 2;
-                            canvasCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-
-                            // Draw perpendicular line from middle of box top to middle of box bottom
-                            const midX = (minX + maxX) / 2;
-                            canvasCtx.beginPath();
-                            canvasCtx.moveTo(midX, minY);
-                            canvasCtx.lineTo(midX, maxY);
-                            canvasCtx.strokeStyle = "red";
-                            canvasCtx.stroke();
-
-                            // Draw horizontal line from middle of left to middle of right
-                            const midY = (minY + maxY) / 2;
-                            canvasCtx.beginPath();
-                            canvasCtx.moveTo(minX, midY);
-                            canvasCtx.lineTo(maxX, midY);
-                            canvasCtx.strokeStyle = "red";
-                            canvasCtx.stroke();
-                            break;
+                    
+                    if (activeModes.mask) {
+                        drawingUtils.drawConnectors(landmarks, toFP(FACE_VERTICAL), { color: "#30FF30", lineWidth: 2 });
+                        drawingUtils.drawConnectors(landmarks, toFP(EYES_HORIZONTAL), { color: "#30FF30", lineWidth: 2 });
+                        drawingUtils.drawConnectors(landmarks, toFP(NOSE_BASE), { color: "#30FF30", lineWidth: 2 });
+                        drawingUtils.drawConnectors(landmarks, toFP(LIP_BASE), { color: "#30FF30", lineWidth: 2 });
+                        drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#30FF30" });
                     }
 
-                    if (areNumbersVisible) {
+                    if (activeModes.circle) {
+                        // Draw circle with radius = distance(point 9, point 1) centered at box center
+                        const p9c = landmarks[151];
+                        const p1c = landmarks[1];
+                        const dxc = (p9c.x - p1c.x) * canvasElement.width;
+                        const dyc = (p9c.y - p1c.y) * canvasElement.height;
+                        const radiusc = Math.sqrt(dxc * dxc + dyc * dyc);
+
+                        const cxc = p9c.x * canvasElement.width;
+                        const cyc = p9c.y * canvasElement.height;
+
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(cxc, cyc, radiusc, 0, 2 * Math.PI);
+                        canvasCtx.strokeStyle = "red";
+                        canvasCtx.stroke();
+                    }
+
+                    if (activeModes.line) {
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
+                        drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                    }
+
+                    if (activeModes.box) {
+                        // Draw bounding box around face
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        for (const landmark of landmarks) {
+                            const x = landmark.x * canvasElement.width;
+                            const y = landmark.y * canvasElement.height;
+                            minX = Math.min(minX, x);
+                            minY = Math.min(minY, y);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                        canvasCtx.strokeStyle = "#ff0000";
+                        canvasCtx.lineWidth = 2;
+                        canvasCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+
+                        // Draw perpendicular line from middle of box top to middle of box bottom
+                        const midX = (minX + maxX) / 2;
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(midX, minY);
+                        canvasCtx.lineTo(midX, maxY);
+                        canvasCtx.strokeStyle = "red";
+                        canvasCtx.stroke();
+
+                        // Draw horizontal line from middle of left to middle of right
+                        const midY = (minY + maxY) / 2;
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(minX, midY);
+                        canvasCtx.lineTo(maxX, midY);
+                        canvasCtx.strokeStyle = "red";
+                        canvasCtx.stroke();
+                    }
+
+                    if (activeModes.numbers) {
                         canvasCtx.fillStyle = "red";
                         canvasCtx.font = "10px Arial";
                         let i = 0;
