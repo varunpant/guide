@@ -283,6 +283,21 @@
                             canvasCtx.strokeStyle = "red";
                             canvasCtx.stroke();
 
+                            // Draw circle with radius = distance(point 9, point 1) centered at box center
+                            const p9 = landmarks[151];
+                            const p1 = landmarks[1];
+                            const dx = (p9.x - p1.x) * canvasElement.width;
+                            const dy = (p9.y - p1.y) * canvasElement.height;
+                            const radius = Math.sqrt(dx * dx + dy * dy);
+
+                            const cx = p9.x * canvasElement.width;
+                            const cy = p9.y * canvasElement.height;
+
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(cx, cy, radius, 0, 2 * Math.PI);
+                            canvasCtx.strokeStyle = "red";
+                            canvasCtx.stroke();
+
                             drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
                             drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
                             drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
