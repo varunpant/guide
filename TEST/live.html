@@ -71,6 +71,7 @@
         <button id="h-btn">H</button>
         <button id="v-btn">V</button>
         <button id="box">Box</button>
+        <button id="line-btn">Line</button>
         <button id="circle-btn">Circle</button>
         <button id="mask-btn">Mask</button>
         
@@ -106,7 +107,7 @@
 
         let faceLandmarker;
         let areNumbersVisible = false;
-        let visualizationMode = 'box'; // default mode: mask, box, circle or null
+        let visualizationMode = 'box'; // default mode: mask, box, circle, line or null
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
@@ -115,10 +116,11 @@
         const circleButton = document.getElementById("circle-btn");
         const maskButton = document.getElementById("mask-btn");
         const boxButton = document.getElementById("box");
+        const lineButton = document.getElementById("line-btn");
         const toggleNumbersButton = document.getElementById("toggle-numbers");
 
         function setActiveButton(activeBtn) {
-            [circleButton, maskButton, boxButton].forEach(btn => btn.classList.remove('active'));
+            [circleButton, maskButton, boxButton, lineButton].forEach(btn => btn.classList.remove('active'));
             if (activeBtn) activeBtn.classList.add('active');
         }
 
@@ -135,6 +137,11 @@
         boxButton.addEventListener("click", () => {
             visualizationMode = visualizationMode === 'box' ? null : 'box';
             setActiveButton(visualizationMode === 'box' ? boxButton : null);
+        });
+
+        lineButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'line' ? null : 'line';
+            setActiveButton(visualizationMode === 'line' ? lineButton : null);
         });
 
         toggleNumbersButton.addEventListener("click", () => {
@@ -245,6 +252,15 @@
                             canvasCtx.strokeStyle = "red";
                             canvasCtx.stroke();
                             break;
+                        case 'line':
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
+                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
+                            break;
                         case 'box':
                             // Draw bounding box around face
                             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -275,14 +291,6 @@
                             canvasCtx.lineTo(maxX, midY);
                             canvasCtx.strokeStyle = "red";
                             canvasCtx.stroke();
-
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(VERTICAL_PARTITION), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_BROW_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_EYE_BOTTOM), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_TOP), { color: "#30FF30", lineWidth: 1 });
-                            drawingUtils.drawConnectors(landmarks, toFP(HORIZONTAL_LIP_BOTTOM), { color: "#30FF30", lineWidth: 1 });
                             break;
                     }
 
