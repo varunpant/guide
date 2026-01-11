@@ -68,10 +68,12 @@
     </div>
 
     <div id="controls">
-        <button id="grid">Grid</button>
-        <button id="eyes">Eyes</button>
-        <button id="lines">Lines</button>
+        <button id="h-btn">H</button>
+        <button id="v-btn">V</button>
         <button id="box">Box</button>
+        <button id="circle-btn">Circle</button>
+        <button id="mask-btn">Mask</button>
+        
         <button id="toggle-numbers">Numbers</button>
     </div>
 
@@ -104,36 +106,30 @@
 
         let faceLandmarker;
         let areNumbersVisible = false;
-        let visualizationMode = 'box'; // default mode: grid, eyes, lines, box, or null
+        let visualizationMode = 'box'; // default mode: mask, box, circle or null
 
         const video = document.getElementById("webcam");
         const canvasElement = document.getElementById("output_canvas");
 
         // Button controls
-        const gridButton = document.getElementById("grid");
-        const eyesButton = document.getElementById("eyes");
-        const linesButton = document.getElementById("lines");
+        const circleButton = document.getElementById("circle-btn");
+        const maskButton = document.getElementById("mask-btn");
         const boxButton = document.getElementById("box");
         const toggleNumbersButton = document.getElementById("toggle-numbers");
 
         function setActiveButton(activeBtn) {
-            [gridButton, eyesButton, linesButton, boxButton].forEach(btn => btn.classList.remove('active'));
+            [circleButton, maskButton, boxButton].forEach(btn => btn.classList.remove('active'));
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        gridButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'grid' ? null : 'grid';
-            setActiveButton(visualizationMode === 'grid' ? gridButton : null);
+        circleButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'circle' ? null : 'circle';
+            setActiveButton(visualizationMode === 'circle' ? circleButton : null);
         });
 
-        eyesButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'eyes' ? null : 'eyes';
-            setActiveButton(visualizationMode === 'eyes' ? eyesButton : null);
-        });
-
-        linesButton.addEventListener("click", () => {
-            visualizationMode = visualizationMode === 'lines' ? null : 'lines';
-            setActiveButton(visualizationMode === 'lines' ? linesButton : null);
+        maskButton.addEventListener("click", () => {
+            visualizationMode = visualizationMode === 'mask' ? null : 'mask';
+            setActiveButton(visualizationMode === 'mask' ? maskButton : null);
         });
 
         boxButton.addEventListener("click", () => {
@@ -226,31 +222,28 @@
                 for (const landmarks of results.faceLandmarks) {
                     // Draw visualization based on selected mode
                     switch (visualizationMode) {
-                        case 'grid':
-                            drawingUtils.drawConnectors(
-                                landmarks,
-                                FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-                                { color: "#30FF30", lineWidth: 1 }
-                            );
-                            break;
-                        case 'eyes':
-                            drawingUtils.drawConnectors(
-                                landmarks,
-                                FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-                                { color: "#30FF30", lineWidth: 3 }
-                            );
-                            drawingUtils.drawConnectors(
-                                landmarks,
-                                FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-                                { color: "#30FF30", lineWidth: 3 }
-                            );
-                            break;
-                        case 'lines':
+                        case 'mask':
                             drawingUtils.drawConnectors(landmarks, toFP(FACE_VERTICAL), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, toFP(EYES_HORIZONTAL), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, toFP(NOSE_BASE), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, toFP(LIP_BASE), { color: "#30FF30", lineWidth: 2 });
                             drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#30FF30" });
+                            break;
+                        case 'circle':
+                            // Draw circle with radius = distance(point 9, point 1) centered at box center
+                            const p9c = landmarks[151];
+                            const p1c = landmarks[1];
+                            const dxc = (p9c.x - p1c.x) * canvasElement.width;
+                            const dyc = (p9c.y - p1c.y) * canvasElement.height;
+                            const radiusc = Math.sqrt(dxc * dxc + dyc * dyc);
+
+                            const cxc = p9c.x * canvasElement.width;
+                            const cyc = p9c.y * canvasElement.height;
+
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(cxc, cyc, radiusc, 0, 2 * Math.PI);
+                            canvasCtx.strokeStyle = "red";
+                            canvasCtx.stroke();
                             break;
                         case 'box':
                             // Draw bounding box around face
@@ -280,21 +273,6 @@
                             canvasCtx.beginPath();
                             canvasCtx.moveTo(minX, midY);
                             canvasCtx.lineTo(maxX, midY);
-                            canvasCtx.strokeStyle = "red";
-                            canvasCtx.stroke();
-
-                            // Draw circle with radius = distance(point 9, point 1) centered at box center
-                            const p9 = landmarks[151];
-                            const p1 = landmarks[1];
-                            const dx = (p9.x - p1.x) * canvasElement.width;
-                            const dy = (p9.y - p1.y) * canvasElement.height;
-                            const radius = Math.sqrt(dx * dx + dy * dy);
-
-                            const cx = p9.x * canvasElement.width;
-                            const cy = p9.y * canvasElement.height;
-
-                            canvasCtx.beginPath();
-                            canvasCtx.arc(cx, cy, radius, 0, 2 * Math.PI);
                             canvasCtx.strokeStyle = "red";
                             canvasCtx.stroke();
 
