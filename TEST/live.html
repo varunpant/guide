@@ -250,14 +250,14 @@
 
                     if (activeModes.circle) {
                         // Draw circle with radius = distance(point 9, point 1) centered at box center
-                        const p9c = landmarks[151];
+                        const p151c = landmarks[151];
                         const p1c = landmarks[1];
-                        const dxc = (p9c.x - p1c.x) * canvasElement.width;
-                        const dyc = (p9c.y - p1c.y) * canvasElement.height;
+                        const dxc = (p151c.x - p1c.x) * canvasElement.width;
+                        const dyc = (p151c.y - p1c.y) * canvasElement.height;
                         const radiusc = Math.sqrt(dxc * dxc + dyc * dyc);
 
-                        const cxc = p9c.x * canvasElement.width;
-                        const cyc = p9c.y * canvasElement.height;
+                        const cxc = p151c.x * canvasElement.width;
+                        const cyc = p151c.y * canvasElement.height;
 
                         canvasCtx.beginPath();
                         canvasCtx.arc(cxc, cyc, radiusc, 0, 2 * Math.PI);
